@@ -1,8 +1,13 @@
-import api from './api';
+import api from "./api";
 
 export const userService = {
+  getDoctorsForBooking: async () => {
+    const response = await api.get("/users/doctors");
+    return response.data;
+  },
+
   getAll: async (params) => {
-    const response = await api.get('/users', { params });
+    const response = await api.get("/users", { params });
     return response.data;
   },
 
@@ -22,23 +27,22 @@ export const userService = {
   },
 
   getStats: async () => {
-    const response = await api.get('/users/stats');
+    const response = await api.get("/users/stats");
     return response.data;
   },
 
   getTrends: async () => {
-    const response = await api.get('/users/trends');
+    const response = await api.get("/users/trends");
     return response.data;
   },
 
   getMe: async () => {
-    const response = await api.get('/auth/me');
+    const response = await api.get("/auth/me");
     return response.data;
   },
 
   updateProfile: async (userData) => {
-    const response = await api.put('/auth/profile', userData);
+    const response = await api.put("/auth/profile", userData);
     return response.data;
   },
 };
-

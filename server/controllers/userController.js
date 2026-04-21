@@ -1,4 +1,9 @@
-const { getUserModel, getAppointmentModel, getAIAnalysisModel, getReportModel } = require('../utils/modelHelper.js');
+const {
+  getUserModel,
+  getAppointmentModel,
+  getAIAnalysisModel,
+  getReportModel,
+} = require("../utils/modelHelper.js");
 
 const getUsers = async (req, res, next) => {
   try {
@@ -12,26 +17,43 @@ const getUsers = async (req, res, next) => {
 
     if (search) {
       query.$or = [
-        { name: { $regex: search, $options: 'i' } },
-        { email: { $regex: search, $options: 'i' } }
+        { name: { $regex: search, $options: "i" } },
+        { email: { $regex: search, $options: "i" } },
       ];
     }
 
     let users = await User.find(query);
-    
+
     // Remove passwords and sort
-    users = users.map(u => {
+    users = users.map((u) => {
       const { password, ...userWithoutPassword } = u;
       return userWithoutPassword;
     });
-    
+
     users.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
     users = users.slice(0, 100);
 
     res.json({
       success: true,
       count: users.length,
-      users
+      users,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const getDoctorsForBooking = async (req, res, next) => {
+  try {
+    const User = getUserModel();
+    let users = await User.find({ role: "doctor", isActive: true });
+
+    users.sort((a, b) => a.name.localeCompare(b.name));
+
+    res.json({
+      success: true,
+      count: users.length,
+      users,
     });
   } catch (error) {
     next(error);
@@ -42,20 +64,20 @@ const getUserById = async (req, res, next) => {
   try {
     const User = getUserModel();
     let user = await User.findById(req.params.id);
-    
+
     // Remove password
     if (user && user.password) {
       const { password, ...userWithoutPassword } = user;
       user = userWithoutPassword;
     }
-    
+
     if (!user) {
-      return res.status(404).json({ message: 'User not found' });
+      return res.status(404).json({ message: "User not found" });
     }
 
     res.json({
       success: true,
-      user
+      user,
     });
   } catch (error) {
     next(error);
@@ -65,21 +87,33 @@ const getUserById = async (req, res, next) => {
 const updateUser = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const allowedUpdates = ['name', 'phone', 'dateOfBirth', 'address', 'specialization', 'licenseNumber', 'bloodGroup', 'emergencyContact', 'isActive', 'role'];
+    const allowedUpdates = [
+      "name",
+      "phone",
+      "dateOfBirth",
+      "address",
+      "specialization",
+      "licenseNumber",
+      "bloodGroup",
+      "emergencyContact",
+      "isActive",
+      "role",
+    ];
     const updates = Object.keys(req.body);
-    const isValidOperation = updates.every(update => allowedUpdates.includes(update));
+    const isValidOperation = updates.every((update) =>
+      allowedUpdates.includes(update),
+    );
 
     if (!isValidOperation) {
-      return res.status(400).json({ message: 'Invalid updates' });
+      return res.status(400).json({ message: "Invalid updates" });
     }
 
     const User = getUserModel();
-    let user = await User.findByIdAndUpdate(
-      id,
-      req.body,
-      { new: true, runValidators: true }
-    );
-    
+    let user = await User.findByIdAndUpdate(id, req.body, {
+      new: true,
+      runValidators: true,
+    });
+
     // Remove password
     if (user && user.password) {
       const { password, ...userWithoutPassword } = user;
@@ -87,12 +121,12 @@ const updateUser = async (req, res, next) => {
     }
 
     if (!user) {
-      return res.status(404).json({ message: 'User not found' });
+      return res.status(404).json({ message: "User not found" });
     }
 
     res.json({
       success: true,
-      user
+      user,
     });
   } catch (error) {
     next(error);
@@ -105,18 +139,20 @@ const deleteUser = async (req, res, next) => {
 
     // Don't allow self-deletion
     if (id === req.user.id) {
-      return res.status(400).json({ message: 'Cannot delete your own account' });
+      return res
+        .status(400)
+        .json({ message: "Cannot delete your own account" });
     }
 
     const User = getUserModel();
     const user = await User.findByIdAndDelete(id);
     if (!user) {
-      return res.status(404).json({ message: 'User not found' });
+      return res.status(404).json({ message: "User not found" });
     }
 
     res.json({
       success: true,
-      message: 'User deleted'
+      message: "User deleted",
     });
   } catch (error) {
     next(error);
@@ -133,14 +169,16 @@ const getDashboardStats = async (req, res, next) => {
     const User = getUserModel();
     const Appointment = getAppointmentModel();
     const AIAnalysis = getAIAnalysisModel();
-    
-    if (role === 'admin') {
+
+    if (role === "admin") {
       const totalUsers = await User.countDocuments();
-      const totalPatients = await User.countDocuments({ role: 'patient' });
-      const totalDoctors = await User.countDocuments({ role: 'doctor' });
+      const totalPatients = await User.countDocuments({ role: "patient" });
+      const totalDoctors = await User.countDocuments({ role: "doctor" });
       const totalAppointments = await Appointment.countDocuments();
       const totalAnalyses = await AIAnalysis.countDocuments();
-      const pendingAppointments = await Appointment.countDocuments({ status: 'pending' });
+      const pendingAppointments = await Appointment.countDocuments({
+        status: "pending",
+      });
 
       stats = {
         totalUsers,
@@ -148,33 +186,45 @@ const getDashboardStats = async (req, res, next) => {
         totalDoctors,
         totalAppointments,
         totalAnalyses,
-        pendingAppointments
+        pendingAppointments,
       };
-    } else if (role === 'doctor') {
+    } else if (role === "doctor") {
       const Appointment = getAppointmentModel();
       const AIAnalysis = getAIAnalysisModel();
-      const myAppointments = await Appointment.countDocuments({ doctor: userId });
-      const pendingAppointments = await Appointment.countDocuments({ doctor: userId, status: 'pending' });
-      const completedAppointments = await Appointment.countDocuments({ doctor: userId, status: 'completed' });
+      const myAppointments = await Appointment.countDocuments({
+        doctor: userId,
+      });
+      const pendingAppointments = await Appointment.countDocuments({
+        doctor: userId,
+        status: "pending",
+      });
+      const completedAppointments = await Appointment.countDocuments({
+        doctor: userId,
+        status: "completed",
+      });
       const myAnalyses = await AIAnalysis.countDocuments({ doctor: userId });
-      const myPatients = await Appointment.distinct('patient', { doctor: userId });
+      const myPatients = await Appointment.distinct("patient", {
+        doctor: userId,
+      });
 
       stats = {
         myAppointments,
         pendingAppointments,
         completedAppointments,
         myAnalyses,
-        totalPatients: myPatients.length
+        totalPatients: myPatients.length,
       };
-    } else if (role === 'patient') {
+    } else if (role === "patient") {
       const Appointment = getAppointmentModel();
       const Report = getReportModel();
       const AIAnalysis = getAIAnalysisModel();
-      const myAppointments = await Appointment.countDocuments({ patient: userId });
-      const upcomingAppointments = await Appointment.countDocuments({ 
-        patient: userId, 
-        status: { $in: ['pending', 'confirmed'] },
-        appointmentDate: { $gte: new Date() }
+      const myAppointments = await Appointment.countDocuments({
+        patient: userId,
+      });
+      const upcomingAppointments = await Appointment.countDocuments({
+        patient: userId,
+        status: { $in: ["pending", "confirmed"] },
+        appointmentDate: { $gte: new Date() },
       });
       const myReports = await Report.countDocuments({ patient: userId });
       const myAnalyses = await AIAnalysis.countDocuments({ patient: userId });
@@ -183,13 +233,13 @@ const getDashboardStats = async (req, res, next) => {
         myAppointments,
         upcomingAppointments,
         myReports,
-        myAnalyses
+        myAnalyses,
       };
     }
 
     res.json({
       success: true,
-      stats
+      stats,
     });
   } catch (error) {
     next(error);
@@ -205,26 +255,26 @@ const getHealthTrends = async (req, res, next) => {
     let analyses = [];
 
     // For admin, get all analyses; for others, get their own
-    if (role === 'admin') {
+    if (role === "admin") {
       analyses = await AIAnalysis.find({});
     } else {
       analyses = await AIAnalysis.find({ patient: userId });
     }
-    
+
     // Sort by creation date
     analyses.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
 
-    const trends = analyses.map(analysis => ({
+    const trends = analyses.map((analysis) => ({
       date: analysis.createdAt,
-      severity: analysis.aiResponse?.severity || 'low',
+      severity: analysis.aiResponse?.severity || "low",
       confidence: analysis.aiResponse?.confidence || 0,
       accuracy: analysis.accuracy || null,
-      diagnosisCount: analysis.aiResponse?.possibleDiagnosis?.length || 0
+      diagnosisCount: analysis.aiResponse?.possibleDiagnosis?.length || 0,
     }));
 
     res.json({
       success: true,
-      trends
+      trends,
     });
   } catch (error) {
     next(error);
@@ -233,9 +283,10 @@ const getHealthTrends = async (req, res, next) => {
 
 module.exports = {
   getUsers,
+  getDoctorsForBooking,
   getUserById,
   updateUser,
   deleteUser,
   getDashboardStats,
-  getHealthTrends
+  getHealthTrends,
 };

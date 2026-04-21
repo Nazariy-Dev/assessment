@@ -24,7 +24,8 @@ const protect = async (req, res, next) => {
       user = userWithoutPassword;
     }
     
-    req.user = user;
+    // map _id to id for consistency with client-side user object
+    req.user = {...user, id: user._id};
     
     if (!req.user || !req.user.isActive) {
       return res.status(401).json({ message: 'User not found or inactive' });

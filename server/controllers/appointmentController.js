@@ -3,6 +3,7 @@ const { getAppointmentModel, getUserModel, populateReference, populateReferences
 const createAppointment = async (req, res, next) => {
   try {
     const { doctor, appointmentDate, appointmentTime, reason, symptoms } = req.body;
+    const patientId = req.user.id || req.user._id;
 
     const Appointment = getAppointmentModel();
     const User = getUserModel();
@@ -14,7 +15,7 @@ const createAppointment = async (req, res, next) => {
     }
 
     const appointment = await Appointment.create({
-      patient: req.user.id,
+      patient: patientId,
       doctor,
       appointmentDate,
       appointmentTime,

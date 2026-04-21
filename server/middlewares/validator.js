@@ -49,7 +49,13 @@ const loginValidation = [
 const appointmentValidation = [
   body('doctor')
     .notEmpty().withMessage('Doctor is required')
-    .isMongoId().withMessage('Invalid doctor ID'),
+    .custom((value) => {
+      // In-memory mode uses non-ObjectId values like "2" for sample users.
+      if (!process.env.MONGODB_URI) {
+        return true;
+      }
+      return /^[a-f\d]{24}$/i.test(String(value));
+    }).withMessage('Invalid doctor ID'),
   body('appointmentDate')
     .notEmpty().withMessage('Appointment date is required')
     .isISO8601().withMessage('Invalid date format'),
